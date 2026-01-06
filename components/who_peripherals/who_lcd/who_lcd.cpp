@@ -1,9 +1,22 @@
 #include "who_lcd.hpp"
 #include "esp_lcd_panel_ops.h"
+#include "esp_log.h"
 #include <string.h>
 #if BSP_CONFIG_NO_GRAPHIC_LIB
 namespace who {
 namespace lcd {
+
+static const char *TAG = "WhoLCD";
+
+#if CONFIG_IDF_TARGET_ESP32S3
+WhoLCD::WhoLCD()
+{
+    ESP_LOGI(TAG, "WhoLCD constructor called");
+    init();
+    ESP_LOGI(TAG, "WhoLCD constructor completed");
+}
+#endif
+
 esp_lcd_panel_handle_t WhoLCD::get_lcd_panel_handle()
 {
 #if CONFIG_IDF_TARGET_ESP32S3
@@ -16,14 +29,48 @@ esp_lcd_panel_handle_t WhoLCD::get_lcd_panel_handle()
 #if CONFIG_IDF_TARGET_ESP32S3
 void WhoLCD::init()
 {
+    ESP_LOGI(TAG, "WhoLCD::init() called");
+    ESP_LOGI(TAG, "About to read BSP LCD constants");
+    int h_res = BSP_LCD_H_RES;
+    int v_res = BSP_LCD_V_RES;
+    int bpp = BSP_LCD_BITS_PER_PIXEL;
+    ESP_LOGI(TAG, "LCD resolution: %d x %d, bits per pixel: %d", h_res, v_res, bpp);
+    ESP_LOGI(TAG, "Calculating max_transfer_sz");
+    int calc_sz = h_res * v_res * (bpp / 8);
+    ESP_LOGI(TAG, "Calculated size: %d bytes", calc_sz);
+    ESP_LOGI(TAG, "Creating bsp_display_config_t structure");
     const bsp_display_config_t bsp_disp_cfg = {
-        .max_transfer_sz = BSP_LCD_H_RES * BSP_LCD_V_RES * (BSP_LCD_BITS_PER_PIXEL / 8),
+        .max_transfer_sz = calc_sz,
     };
-    ESP_ERROR_CHECK(bsp_display_new(&bsp_disp_cfg, &m_panel_handle, &m_io_handle));
+    ESP_LOGI(TAG, "Config structure created, max_transfer_sz: %lu", bsp_disp_cfg.max_transfer_sz);
+    ESP_LOGI(TAG, "About to call bsp_display_new - this may crash if LCD hardware is not present");
+    vTaskDelay(pdMS_TO_TICKS(100));  // Give time for log to flush
+    esp_err_t ret = bsp_display_new(&bsp_disp_cfg, &m_panel_handle, &m_io_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "bsp_display_new failed with error 0x%x (%s)", ret, esp_err_to_name(ret));
+        ESP_LOGE(TAG, "LCD hardware may not be present or configured incorrectly");
+        abort();
+    }
+    ESP_LOGI(TAG, "bsp_display_new succeeded");
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "bsp_display_new failed with error 0x%x (%s)", ret, esp_err_to_name(ret));
+        abort();
+    }
+    ESP_LOGI(TAG, "Display created successfully");
+    ESP_LOGI(TAG, "Display created, turning on");
     esp_lcd_panel_disp_on_off(m_panel_handle, true);
     ESP_ERROR_CHECK(bsp_display_backlight_on());
-    m_lcd_buffer = heap_caps_malloc(BSP_LCD_H_RES * BSP_LCD_V_RES * (BSP_LCD_BITS_PER_PIXEL / 8),
-                                    MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+    ESP_LOGI(TAG, "Allocating LCD buffer (%d x %d x %d bytes)", 
+             BSP_LCD_H_RES, BSP_LCD_V_RES, (BSP_LCD_BITS_PER_PIXEL / 8));
+    size_t buffer_size = BSP_LCD_H_RES * BSP_LCD_V_RES * (BSP_LCD_BITS_PER_PIXEL / 8);
+    m_lcd_buffer = heap_caps_malloc(buffer_size, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+    if (m_lcd_buffer == nullptr) {
+        ESP_LOGE(TAG, "Failed to allocate LCD buffer of size %zu bytes", buffer_size);
+        ESP_LOGE(TAG, "This requires internal RAM with DMA capability");
+        abort();
+    }
+    ESP_LOGI(TAG, "LCD buffer allocated successfully at %p", m_lcd_buffer);
+    ESP_LOGI(TAG, "LCD initialization complete");
 }
 
 void WhoLCD::draw_full_lcd(const void *data)

@@ -32,6 +32,7 @@ WhoS3Cam::WhoS3Cam(const pixformat_t pixel_format,
     camera_config.pixel_format = pixel_format;
     camera_config.frame_size = frame_size;
     camera_config.fb_count = fb_count;
+    camera_config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
     if (pixel_format == PIXFORMAT_JPEG) {
         camera_config.xclk_freq_hz = 20000000;
     }

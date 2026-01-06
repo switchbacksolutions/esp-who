@@ -1,5 +1,6 @@
 #include "who_task_state.hpp"
 #include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
 namespace who {
 namespace task {
@@ -57,18 +58,44 @@ void WhoTaskState::print_task_status()
     printf("----------------------------------------------------------------------------------------------\n");
 
     for (UBaseType_t i = 0; i < num_tasks; i++) {
+        // Get core ID - in ESP-IDF 5.x, the field name may have changed
+        BaseType_t core_id = -1;
+#if CONFIG_FREERTOS_VTASKLIST_INCLUDE_COREID
+        // Try to get core ID from task handle using affinity
+        TaskHandle_t task_handle = task_status_array[i].xHandle;
+        if (task_handle != NULL) {
+            BaseType_t affinity = xTaskGetAffinity(task_handle);
+            // Convert affinity bitmask to core number (0 or 1 for dual-core)
+            if (affinity & 0x01) {
+                core_id = 0;
+            } else if (affinity & 0x02) {
+                core_id = 1;
+            } else {
+                core_id = -1; // Pinned to both cores or invalid
+            }
+        }
+#else
+        core_id = -1;
+#endif
 #if CONFIG_FREERTOS_RUN_TIME_COUNTER_TYPE_U32
         printf("%-15s | %-8x | %-9s | %-8u | %-11lu | %-11lu | %-12lu |\n",
-#else
-        printf("%-15s | %-8x | %-9s | %-8u | %-11lu | %-11llu | %-12llu |\n",
-#endif
                task_status_array[i].pcTaskName,
-               task_status_array[i].xCoreID,
+               (unsigned int)core_id,
                m_task_state[task_status_array[i].eCurrentState].c_str(),
                task_status_array[i].uxCurrentPriority,
                task_status_array[i].usStackHighWaterMark,
-               task_status_array[i].ulRunTimeCounter,
-               task_status_array[i].ulRunTimeCounter * 100 / total_run_time);
+               (unsigned long)task_status_array[i].ulRunTimeCounter,
+               (unsigned long)(task_status_array[i].ulRunTimeCounter * 100 / total_run_time));
+#else
+        printf("%-15s | %-8x | %-9s | %-8u | %-11lu | %-11llu | %-12llu |\n",
+               task_status_array[i].pcTaskName,
+               (unsigned int)core_id,
+               m_task_state[task_status_array[i].eCurrentState].c_str(),
+               task_status_array[i].uxCurrentPriority,
+               task_status_array[i].usStackHighWaterMark,
+               (unsigned long long)task_status_array[i].ulRunTimeCounter,
+               (unsigned long long)(task_status_array[i].ulRunTimeCounter * 100 / total_run_time));
+#endif
     }
     printf("\n");
     heap_caps_free(task_status_array);

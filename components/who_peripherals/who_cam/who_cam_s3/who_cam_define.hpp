@@ -11,8 +11,8 @@ inline dl::image::img_t fb2img(const who::cam::cam_fb_t *fb)
 {
     assert(fb->format == PIXFORMAT_RGB565 || fb->format == PIXFORMAT_RGB888);
     return {.data = fb->buf,
-            .width = (int)fb->width,
-            .height = (int)fb->height,
+            .width = static_cast<uint16_t>(fb->width),
+            .height = static_cast<uint16_t>(fb->height),
             .pix_type = (fb->format == PIXFORMAT_RGB565) ? dl::image::DL_IMAGE_PIX_TYPE_RGB565
                                                          : dl::image::DL_IMAGE_PIX_TYPE_RGB888};
 }

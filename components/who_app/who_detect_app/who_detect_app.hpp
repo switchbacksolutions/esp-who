@@ -1,6 +1,7 @@
 #pragma once
 #include "who_detect_lcd.hpp"
 #include "who_detect_term.hpp"
+#include "who_detect_stream.hpp"
 #include "who_frame_cap.hpp"
 
 namespace who {
@@ -26,6 +27,13 @@ public:
 class WhoDetectAppTerm : public WhoDetectAppBase {
 public:
     WhoDetectAppTerm();
+};
+
+class WhoDetectAppStream : public WhoDetectAppBase {
+public:
+    WhoDetectAppStream(uint16_t port = 80);
+    bool start_server();
+    void stop_server();
 };
 } // namespace app
 } // namespace who

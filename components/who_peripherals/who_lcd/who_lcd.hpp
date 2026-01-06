@@ -9,7 +9,7 @@ namespace who {
 namespace lcd {
 class WhoLCD {
 public:
-    WhoLCD() { init(); }
+    WhoLCD();
     void init();
     esp_lcd_panel_handle_t get_lcd_panel_handle();
     void draw_full_lcd(const void *data);

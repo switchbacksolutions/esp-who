@@ -9,20 +9,15 @@ void draw_detect_results_on_fb(who::cam::cam_fb_t *fb,
                                const std::list<dl::detect::result_t> &detect_res,
                                const std::vector<std::vector<uint8_t>> &palette)
 {
-#if CONFIG_IDF_TARGET_ESP32P4
-    uint32_t caps = DL_IMAGE_CAP_RGB565_BIG_ENDIAN;
-#else
-    uint32_t caps = 0;
-#endif
     dl::image::img_t img = who::cam::fb2img(fb);
     for (const auto &res : detect_res) {
         dl::image::draw_hollow_rectangle(
-            img, res.box[0], res.box[1], res.box[2], res.box[3], palette[res.category], 2, caps);
+            img, res.box[0], res.box[1], res.box[2], res.box[3], palette[res.category], 2);
         if (!res.keypoint.empty()) {
             assert(res.keypoint.size() == 10);
             for (int i = 0; i < 5; i++) {
                 dl::image::draw_point(
-                    img, res.keypoint[2 * i], res.keypoint[2 * i + 1], palette[res.category], 5, caps);
+                    img, res.keypoint[2 * i], res.keypoint[2 * i + 1], palette[res.category], 5);
             }
         }
     }
